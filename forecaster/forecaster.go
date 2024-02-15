@@ -1,7 +1,7 @@
 package forecaster
 
 type Forecaster interface {
-	GetCityForecast(city string, days int) (City, error)
+	GetCityForecast(city string, params Params) (City, error)
 }
 
 type Forecast struct {
@@ -15,5 +15,11 @@ type City struct {
 	Timezone  string
 	Country   string
 	// maximum, 24 hours for hourly results
-	forecast []Forecast
+	Forecasts []Forecast
+}
+
+type Params struct {
+	Days          int
+	Temperature   bool
+	Precipitation bool
 }

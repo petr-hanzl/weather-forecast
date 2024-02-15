@@ -10,7 +10,7 @@ import (
 
 const (
 	tempParam          = "temperature_180m"
-	precipitationParam = "precipitation"
+	precipitationParam = "Precipitation"
 )
 
 func MakeForecaster(client *http.Client) Forecaster {
@@ -56,13 +56,21 @@ type temp struct {
 	Temperature []float64 `json:"temperature_180m"`
 }
 
-func (f *defaultForecaster) GetCityForecast(cityStr string, days int) (City, error) {
+func (f *defaultForecaster) GetCityForecast(cityStr string, params Params) (City, error) {
 	city, err := f.getCity(cityStr)
 	if err != nil {
 		return city, err
 	}
-
-	endpoint := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.6f&longitude=%.6f&hourly=temperature_180m&forecast_days=%d", city.Longitude, city.Latitude, days)
+	var apiParams string
+	switch {
+	case params.Temperature && params.Precipitation:
+		apiParams = tempParam + "," + precipitationParam
+	case params.Temperature:
+		apiParams = tempParam
+	default:
+		apiParams = precipitationParam
+	}
+	endpoint := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.6f&longitude=%.6f&hourly=%v&forecast_days=%v", city.Longitude, city.Latitude, apiParams, params.Days)
 	resp, err := f.client.Get(endpoint)
 	if err != nil {
 		return City{}, fmt.Errorf("cannot send request to wather api; %w", err)
@@ -74,17 +82,15 @@ func (f *defaultForecaster) GetCityForecast(cityStr string, days int) (City, err
 		return City{}, fmt.Errorf("cannot read weather response; %w", err)
 	}
 
-	fmt.Println(string(all))
-
 	var fc forecastResponse
 	err = json.Unmarshal(all, &fc)
 	if err != nil {
-		return city, fmt.Errorf("cannot unmarshal forecast; %w", err)
+		return city, fmt.Errorf("cannot unmarshal Forecasts; %w", err)
 	}
 
 	// fill data into city
 	for i, _ := range fc.Tmp.Time {
-		city.forecast = append(city.forecast, Forecast{
+		city.Forecasts = append(city.Forecasts, Forecast{
 			Time: fc.Tmp.Time[i],
 			Temp: fc.Tmp.Temperature[i],
 		})
