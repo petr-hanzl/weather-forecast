@@ -19,6 +19,11 @@ type Api struct {
 	fc  forecaster.Forecaster
 }
 
+type errorResponse struct {
+	Code    int
+	Message string
+}
+
 func MakeApi(f forecaster.Forecaster) *Api {
 	return &Api{mux: http.DefaultServeMux, fc: f}
 }
@@ -29,7 +34,17 @@ func (a *Api) cityForecast(rw http.ResponseWriter, req *http.Request) {
 	all, err := io.ReadAll(req.Body)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(fmt.Errorf("cannot read data; %w", err).Error()))
+		e := errorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: fmt.Sprintf("cannot read data; %v", err),
+		}
+		marshal, err := json.Marshal(e)
+		if err != nil {
+			rw.Write([]byte("error"))
+			return
+		}
+
+		rw.Write(marshal)
 		return
 	}
 
@@ -37,13 +52,33 @@ func (a *Api) cityForecast(rw http.ResponseWriter, req *http.Request) {
 	err = json.Unmarshal(all, &p)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte(fmt.Errorf("cannot decode request body; %w", err).Error()))
+		e := errorResponse{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("cannot decode request body; %v", err),
+		}
+		marshal, err := json.Marshal(e)
+		if err != nil {
+			rw.Write([]byte("error"))
+			return
+		}
+
+		rw.Write(marshal)
 		return
 	}
 
 	if !p.Temperature && !p.Precipitation {
 		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte("please choose forecast"))
+		e := errorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "please choose forecast",
+		}
+		marshal, err := json.Marshal(e)
+		if err != nil {
+			rw.Write([]byte("error"))
+			return
+		}
+
+		rw.Write(marshal)
 		return
 	}
 	if p.Days == 0 {
@@ -53,7 +88,17 @@ func (a *Api) cityForecast(rw http.ResponseWriter, req *http.Request) {
 	forecast, err := a.fc.GetCityForecast(city, p)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(fmt.Errorf("cannot find forecast for given params; %w", err).Error()))
+		e := errorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: fmt.Sprintf("cannot find forecast for given params; %v", err),
+		}
+		marshal, err := json.Marshal(e)
+		if err != nil {
+			rw.Write([]byte("error"))
+			return
+		}
+
+		rw.Write(marshal)
 		return
 	}
 
