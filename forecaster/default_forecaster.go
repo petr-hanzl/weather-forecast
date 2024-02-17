@@ -10,7 +10,7 @@ import (
 
 const (
 	tempParam          = "temperature_180m"
-	precipitationParam = "Precipitation"
+	precipitationParam = "precipitation"
 )
 
 func MakeForecaster(client *http.Client) Forecaster {
@@ -52,8 +52,9 @@ type forecastResponse struct {
 }
 
 type temp struct {
-	Time        []string
-	Temperature []float64 `json:"temperature_180m"`
+	Time          []string
+	Temperature   []float64 `json:"temperature_180m"`
+	Precipitation []float64
 }
 
 func (f *defaultForecaster) GetCityForecast(cityStr string, params Params) (City, error) {
@@ -82,7 +83,12 @@ func (f *defaultForecaster) GetCityForecast(cityStr string, params Params) (City
 		return City{}, fmt.Errorf("cannot read weather response; %w", err)
 	}
 
-	var fc forecastResponse
+	fc := forecastResponse{Tmp: temp{
+		Time:          make([]string, params.Days*24),
+		Temperature:   make([]float64, params.Days*24),
+		Precipitation: make([]float64, params.Days*24),
+	}}
+
 	err = json.Unmarshal(all, &fc)
 	if err != nil {
 		return city, fmt.Errorf("cannot unmarshal Forecasts; %w", err)
@@ -91,8 +97,9 @@ func (f *defaultForecaster) GetCityForecast(cityStr string, params Params) (City
 	// fill data into city
 	for i, _ := range fc.Tmp.Time {
 		city.Forecasts = append(city.Forecasts, Forecast{
-			Time: fc.Tmp.Time[i],
-			Temp: fc.Tmp.Temperature[i],
+			Time:          fc.Tmp.Time[i],
+			Temp:          fc.Tmp.Temperature[i],
+			Precipitation: fc.Tmp.Precipitation[i],
 		})
 	}
 

@@ -5,8 +5,9 @@ type Forecaster interface {
 }
 
 type Forecast struct {
-	Time string
-	Temp float64
+	Time          string
+	Temp          float64
+	Precipitation float64
 }
 type City struct {
 	Name      string
